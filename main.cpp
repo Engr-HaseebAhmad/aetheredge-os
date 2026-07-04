@@ -1,6 +1,7 @@
 #include <iostream>
 #include "pool_allocator.hpp"
 #include "rtos_scheduler.hpp"
+#include "cache_simulator.hpp"
 
 int main() {
     std::cout << "==================================================" << std::endl;
@@ -8,7 +9,6 @@ int main() {
     std::cout << "==================================================" << std::endl;
 
     // 1. Initialize Memory Infrastructure
-    // Creating a pool with 64 bytes per block and 5 total blocks
     PoolAllocator systemMemoryPool(64, 5);
     std::cout << "[OK] Static Block Memory Pool initialized safely." << std::endl;
 
@@ -16,18 +16,25 @@ int main() {
     TaskScheduler osScheduler;
     std::cout << "[OK] Real-Time Task Scheduler initialized safely." << std::endl;
 
-    // 3. Allocate memory buffer from our pool for safe telemetry tracking
-    void* telemetryBuffer = systemMemoryPool.allocate();
-    if (telemetryBuffer != nullptr) {
-        std::cout << "[OK] Telemetry runtime buffer allocated from static pool." << std::endl;
-    }
+    // 3. Initialize Hardware Cache Simulator (Size = 3 blocks)
+    CacheSimulator cpuCache(3);
+    std::cout << "[OK] L1 Cache Simulator initialized safely." << std::endl;
 
-    // 4. Start the execution loop for 6 simulation cycles
-    osScheduler.startLoop(6);
+    std::cout << "--------------------------------------------------" << std::endl;
 
-    // 5. Clean up and return memory to pool after execution completes
-    systemMemoryPool.deallocate(telemetryBuffer);
-    std::cout << "[OK] Telemetry runtime buffer returned to static pool." << std::endl;
+    // 4. Simulate CPU memory accesses to test Cache Hits and Misses
+    std::cout << "--- Starting Hardware Cache Simulation Test ---" << std::endl;
+    cpuCache.accessAddress(10); // Miss (Cache empty)
+    cpuCache.accessAddress(20); // Miss (Cache empty)
+    cpuCache.accessAddress(10); // Hit! (Address 10 is already in cache)
+    cpuCache.accessAddress(30); // Miss
+    cpuCache.accessAddress(20); // Hit! (Address 20 is already in cache)
+    cpuCache.accessAddress(40); // Miss (Cache full, replaces oldest address)
+    
+    std::cout << "--------------------------------------------------" << std::endl;
+
+    // 5. Run the RTOS Task Scheduler Loop
+    osScheduler.startLoop(4);
 
     std::cout << "==================================================" << std::endl;
     std::cout << "       SYSTEM SHUTDOWN CLEANUP COMPLETED          " << std::endl;
